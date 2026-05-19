@@ -2,56 +2,47 @@
 <robot name="lunar_rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!-- ============================================================
-       ROVER LUNAR TMR 2026
-       Chasis: 27cm x 20.5cm x 10cm  (orugas diferenciales)
-       Brazo:  6 DOF (MG996R x3 + MG90S x3)
-         - a = 9.5cm  base
-         - b = 11.5cm upper arm
-         - c = 10cm   forearm
-         - d = 3cm    wrist_pitch
-         - e = 7cm    wrist_roll + gripper
+       ROVER LUNAR TMR 2026 — URDF v2 (física estable)
+       Cambios vs v1:
+       1. Ruedas reposicionadas (no penetran el suelo)
+       2. Orugas son SOLO visuales (sin collision)
+       3. Fricción reducida (mu=0.8 en vez de 1.5)
+       4. kp reducido (100000 en vez de 500000)
+       5. max_wheel_acceleration bajado (3.0 en vez de 10.0)
        ============================================================ -->
 
-  <!-- Propiedades globales -->
   <xacro:property name="PI" value="3.14159265"/>
 
   <!-- Chasis -->
   <xacro:property name="chassis_length" value="0.27"/>
   <xacro:property name="chassis_width"  value="0.205"/>
   <xacro:property name="chassis_height" value="0.10"/>
-  <xacro:property name="chassis_mass"   value="3.0"/>
+  <xacro:property name="chassis_mass"   value="3.5"/>
 
-  <!-- Orugas (representadas como cajas planas) -->
+  <!-- Ruedas motrices -->
+  <xacro:property name="wheel_radius"   value="0.0575"/>
+  <xacro:property name="wheel_width"    value="0.04"/>
+  <xacro:property name="wheel_mass"     value="0.2"/>
+
+  <!-- Orugas (SOLO VISUALES ahora) -->
   <xacro:property name="track_length"   value="0.27"/>
   <xacro:property name="track_width"    value="0.04"/>
   <xacro:property name="track_height"   value="0.115"/>
   <xacro:property name="track_offset_y" value="0.1225"/>
 
   <!-- Brazo -->
-  <xacro:property name="base_h"     value="0.095"/>   <!-- a -->
-  <xacro:property name="upper_l"    value="0.115"/>   <!-- b -->
-  <xacro:property name="forearm_l"  value="0.100"/>   <!-- c -->
-  <xacro:property name="wrist_p_l"  value="0.030"/>   <!-- d -->
-  <xacro:property name="wrist_r_l"  value="0.040"/>   <!-- e/2 -->
-  <xacro:property name="gripper_l"  value="0.030"/>   <!-- e/2 -->
+  <xacro:property name="base_h"     value="0.095"/>
+  <xacro:property name="upper_l"    value="0.115"/>
+  <xacro:property name="forearm_l"  value="0.100"/>
+  <xacro:property name="wrist_p_l"  value="0.030"/>
+  <xacro:property name="wrist_r_l"  value="0.040"/>
+  <xacro:property name="gripper_l"  value="0.030"/>
 
-  <!-- Colores Gazebo -->
-  <material name="dark_grey">
-    <color rgba="0.2 0.2 0.2 1"/>
-  </material>
-  <material name="light_grey">
-    <color rgba="0.6 0.6 0.6 1"/>
-  </material>
-  <material name="black">
-    <color rgba="0.05 0.05 0.05 1"/>
-  </material>
-  <material name="orange">
-    <color rgba="1.0 0.5 0.0 1"/>
-  </material>
+  <material name="dark_grey"><color rgba="0.2 0.2 0.2 1"/></material>
+  <material name="light_grey"><color rgba="0.6 0.6 0.6 1"/></material>
+  <material name="black"><color rgba="0.05 0.05 0.05 1"/></material>
+  <material name="orange"><color rgba="1.0 0.5 0.0 1"/></material>
 
-  <!-- ============================================================
-       MACRO: Inercia de caja
-       ============================================================ -->
   <xacro:macro name="box_inertia" params="m x y z">
     <inertial>
       <mass value="${m}"/>
@@ -71,14 +62,17 @@
   </xacro:macro>
 
   <!-- ============================================================
-       BASE LINK (referencia del robot)
+       BASE LINKS
+       base_footprint = referencia en el suelo (z=0)
+       base_link = chasis, elevado UN RADIO DE RUEDA sobre el suelo
        ============================================================ -->
   <link name="base_footprint"/>
 
   <joint name="base_joint" type="fixed">
     <parent link="base_footprint"/>
     <child link="base_link"/>
-    <origin xyz="0 0 ${track_height/2}" rpy="0 0 0"/>
+    <!-- base_link a la altura del centro de las ruedas -->
+    <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
   </joint>
 
   <!-- ============================================================
@@ -105,7 +99,8 @@
   </link>
 
   <!-- ============================================================
-       ORUGAS — izquierda y derecha (visuales + colisión)
+       ORUGAS — SOLO VISUALES (sin collision)
+       Las "tracks" solo decoran. Las ruedas hacen el trabajo físico.
        ============================================================ -->
   <xacro:macro name="track" params="side reflect">
     <link name="track_${side}">
@@ -116,20 +111,20 @@
         </geometry>
         <material name="black"/>
       </visual>
-      <collision>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <geometry>
-          <box size="${track_length} ${track_width} ${track_height}"/>
-        </geometry>
-      </collision>
-      <xacro:box_inertia m="0.3" x="${track_length}" y="${track_width}" z="${track_height}"/>
+      <!-- NO collision aquí — orugas son visuales nomas -->
+      <inertial>
+        <mass value="0.05"/>
+        <inertia ixx="0.0001" ixy="0" ixz="0"
+                 iyy="0.0001" iyz="0"
+                 izz="0.0001"/>
+      </inertial>
     </link>
 
     <joint name="track_${side}_joint" type="fixed">
       <parent link="base_link"/>
       <child link="track_${side}"/>
-      <origin xyz="0 ${reflect*track_offset_y} ${-(chassis_height/2 - track_height/2 + 0.005)}"
-              rpy="0 0 0"/>
+      <!-- Centrada vertical respecto al chasis -->
+      <origin xyz="0 ${reflect*track_offset_y} -0.0075" rpy="0 0 0"/>
     </joint>
   </xacro:macro>
 
@@ -137,34 +132,36 @@
   <xacro:track side="right" reflect="-1"/>
 
   <!-- ============================================================
-       RUEDAS MOTRICES — izquierda y derecha (para differential drive)
-       Gazebo las usa internamente para calcular movimiento
+       RUEDAS MOTRICES — únicos contactos con el suelo
+       Centro de rueda a la altura de base_link (z=wheel_radius absoluto)
+       Esto asegura que la rueda toque el suelo PERFECTAMENTE.
        ============================================================ -->
   <xacro:macro name="drive_wheel" params="side reflect">
     <link name="wheel_${side}">
       <visual>
         <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
         <geometry>
-          <cylinder radius="0.0575" length="0.04"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
         <material name="black"/>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
         <geometry>
-          <cylinder radius="0.0575" length="0.04"/>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
         </geometry>
       </collision>
-      <xacro:cylinder_inertia m="0.2" r="0.0575" h="0.04"/>
+      <xacro:cylinder_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
     </link>
 
     <joint name="wheel_${side}_joint" type="continuous">
       <parent link="base_link"/>
       <child link="wheel_${side}"/>
-      <origin xyz="0 ${reflect*(chassis_width/2 + 0.02)} ${-chassis_height/2 + 0.005}"
-              rpy="0 0 0"/>
+      <!-- z=0: centro de la rueda en la misma altura que base_link -->
+      <!-- y: ligeramente fuera del chasis para que las orugas las cubran -->
+      <origin xyz="0 ${reflect*(chassis_width/2 + 0.02)} 0" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
-      <dynamics damping="0.1" friction="0.5"/>
+      <dynamics damping="0.05" friction="0.1"/>
     </joint>
   </xacro:macro>
 
@@ -173,7 +170,6 @@
 
   <!-- ============================================================
        SENSOR LIDAR — LD14P
-       Montado encima del chasis, al frente-centro
        ============================================================ -->
   <link name="lidar_link">
     <visual>
@@ -199,7 +195,7 @@
   </joint>
 
   <!-- ============================================================
-       CÁMARA RGB-D — AstraPro (frontal)
+       CÁMARA RGB-D — AstraPro
        ============================================================ -->
   <link name="camera_link">
     <visual>
@@ -220,7 +216,8 @@
   <joint name="camera_joint" type="fixed">
     <parent link="base_link"/>
     <child link="camera_link"/>
-    <origin xyz="${chassis_length/2 - 0.01} 0 ${chassis_height/2 + 0.015}" rpy="0 0.2 0"/>
+    <!-- Inclinación reducida a 0.1 rad (5.7 grados) — más estable visualmente -->
+    <origin xyz="${chassis_length/2 - 0.01} 0 ${chassis_height/2 + 0.015}" rpy="0 0.1 0"/>
   </joint>
 
   <link name="camera_optical_link"/>
@@ -231,11 +228,8 @@
   </joint>
 
   <!-- ============================================================
-       BRAZO ROBÓTICO — 6 DOF (diseño propio)
-       Montado en la parte trasera-centro del chasis
+       BRAZO ROBÓTICO — 6 DOF
        ============================================================ -->
-
-  <!-- --- LINK 0: Base fija del brazo sobre el chasis --- -->
   <link name="arm_base_link">
     <visual>
       <origin xyz="0 0 ${base_h/2}" rpy="0 0 0"/>
@@ -259,7 +253,6 @@
     <origin xyz="${-chassis_length/2 + 0.08} 0 ${chassis_height/2}" rpy="0 0 0"/>
   </joint>
 
-  <!-- --- JOINT 1: Rotación base (yaw) — MG996R --- -->
   <joint name="joint_1" type="revolute">
     <parent link="arm_base_link"/>
     <child link="link_1"/>
@@ -269,7 +262,6 @@
     <dynamics damping="0.05" friction="0.1"/>
   </joint>
 
-  <!-- --- LINK 1: Hombro (upper arm b=11.5cm) --- -->
   <link name="link_1">
     <visual>
       <origin xyz="0 0 ${upper_l/2}" rpy="0 0 0"/>
@@ -287,7 +279,6 @@
     <xacro:box_inertia m="0.15" x="0.04" y="0.04" z="${upper_l}"/>
   </link>
 
-  <!-- --- JOINT 2: Hombro (pitch) — MG996R --- -->
   <joint name="joint_2" type="revolute">
     <parent link="link_1"/>
     <child link="link_2"/>
@@ -297,7 +288,6 @@
     <dynamics damping="0.05" friction="0.1"/>
   </joint>
 
-  <!-- --- LINK 2: Codo (forearm c=10cm) --- -->
   <link name="link_2">
     <visual>
       <origin xyz="${forearm_l/2} 0 0" rpy="0 ${PI/2} 0"/>
@@ -315,7 +305,6 @@
     <xacro:box_inertia m="0.12" x="${forearm_l}" y="0.035" z="0.035"/>
   </link>
 
-  <!-- --- JOINT 3: Codo (pitch) — MG996R --- -->
   <joint name="joint_3" type="revolute">
     <parent link="link_2"/>
     <child link="link_3"/>
@@ -325,7 +314,6 @@
     <dynamics damping="0.05" friction="0.1"/>
   </joint>
 
-  <!-- --- LINK 3: Muñeca pitch (d=3cm) --- -->
   <link name="link_3">
     <visual>
       <origin xyz="${wrist_p_l/2} 0 0" rpy="0 ${PI/2} 0"/>
@@ -343,7 +331,6 @@
     <xacro:box_inertia m="0.05" x="${wrist_p_l}" y="0.03" z="0.03"/>
   </link>
 
-  <!-- --- JOINT 4: Muñeca pitch — MG90S --- -->
   <joint name="joint_4" type="revolute">
     <parent link="link_3"/>
     <child link="link_4"/>
@@ -353,7 +340,6 @@
     <dynamics damping="0.02" friction="0.05"/>
   </joint>
 
-  <!-- --- LINK 4: Muñeca roll --- -->
   <link name="link_4">
     <visual>
       <origin xyz="${wrist_r_l/2} 0 0" rpy="0 ${PI/2} 0"/>
@@ -371,7 +357,6 @@
     <xacro:cylinder_inertia m="0.04" r="0.018" h="${wrist_r_l}"/>
   </link>
 
-  <!-- --- JOINT 5: Muñeca roll — MG90S --- -->
   <joint name="joint_5" type="revolute">
     <parent link="link_4"/>
     <child link="link_5"/>
@@ -381,7 +366,6 @@
     <dynamics damping="0.02" friction="0.05"/>
   </joint>
 
-  <!-- --- LINK 5: Conector gripper --- -->
   <link name="link_5">
     <visual>
       <origin xyz="${gripper_l/2} 0 0" rpy="0 ${PI/2} 0"/>
@@ -399,7 +383,6 @@
     <xacro:box_inertia m="0.03" x="${gripper_l}" y="0.04" z="0.025"/>
   </link>
 
-  <!-- --- JOINT 6: Apertura del gripper — MG90S --- -->
   <joint name="joint_6" type="revolute">
     <parent link="link_5"/>
     <child link="gripper_link"/>
@@ -409,7 +392,6 @@
     <dynamics damping="0.01" friction="0.02"/>
   </joint>
 
-  <!-- --- LINK GRIPPER --- -->
   <link name="gripper_link">
     <visual>
       <origin xyz="0.02 0.01 0" rpy="0 0 0"/>
@@ -427,7 +409,6 @@
     <xacro:box_inertia m="0.015" x="0.04" y="0.008" z="0.02"/>
   </link>
 
-  <!-- Frame del efector final (tool center point) -->
   <link name="tcp_link"/>
   <joint name="tcp_joint" type="fixed">
     <parent link="gripper_link"/>
@@ -436,22 +417,20 @@
   </joint>
 
   <!-- ============================================================
-       PLUGINS DE GAZEBO
+       PLUGINS GAZEBO
        ============================================================ -->
 
-  <!-- Plugin differential drive (simula movimiento de orugas) -->
+  <!-- Diff drive: aceleración reducida a 3.0 m/s2 (era 10.0) -->
   <gazebo>
     <plugin name="differential_drive_controller"
             filename="libgazebo_ros_diff_drive.so">
-      <ros>
-        <namespace>/rover</namespace>
-      </ros>
+      <ros><namespace>/rover</namespace></ros>
       <left_joint>wheel_left_joint</left_joint>
       <right_joint>wheel_right_joint</right_joint>
-      <wheel_separation>${chassis_width + 0.04}</wheel_separation>
+      <wheel_separation>0.245</wheel_separation>
       <wheel_diameter>0.115</wheel_diameter>
       <max_wheel_torque>20</max_wheel_torque>
-      <max_wheel_acceleration>10.0</max_wheel_acceleration>
+      <max_wheel_acceleration>3.0</max_wheel_acceleration>
       <command_topic>cmd_vel</command_topic>
       <publish_odom>true</publish_odom>
       <publish_odom_tf>true</publish_odom_tf>
@@ -462,7 +441,7 @@
     </plugin>
   </gazebo>
 
-  <!-- Plugin LIDAR LD14P (simulado como RPLidar 360°) -->
+  <!-- LIDAR -->
   <gazebo reference="lidar_link">
     <sensor name="lidar" type="ray">
       <always_on>true</always_on>
@@ -499,7 +478,7 @@
     </sensor>
   </gazebo>
 
-  <!-- Plugin Cámara RGB (AstraPro - canal color) -->
+  <!-- Cámara RGB -->
   <gazebo reference="camera_link">
     <sensor name="camera_rgb" type="camera">
       <always_on>true</always_on>
@@ -512,10 +491,7 @@
           <height>480</height>
           <format>R8G8B8</format>
         </image>
-        <clip>
-          <near>0.05</near>
-          <far>10.0</far>
-        </clip>
+        <clip><near>0.05</near><far>10.0</far></clip>
         <noise>
           <type>gaussian</type>
           <mean>0.0</mean>
@@ -532,20 +508,13 @@
       </plugin>
     </sensor>
 
-    <!-- Plugin Profundidad (AstraPro - canal depth) -->
     <sensor name="camera_depth" type="depth">
       <always_on>true</always_on>
       <update_rate>15</update_rate>
       <camera>
         <horizontal_fov>1.089</horizontal_fov>
-        <image>
-          <width>640</width>
-          <height>480</height>
-        </image>
-        <clip>
-          <near>0.1</near>
-          <far>8.0</far>
-        </clip>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.1</near><far>8.0</far></clip>
       </camera>
       <plugin name="depth_plugin" filename="libgazebo_ros_camera.so">
         <ros>
@@ -559,7 +528,7 @@
     </sensor>
   </gazebo>
 
-  <!-- Plugin IMU (SensorTile) -->
+  <!-- IMU -->
   <gazebo reference="base_link">
     <gravity>true</gravity>
     <sensor name="imu_sensor" type="imu">
@@ -588,25 +557,32 @@
     </sensor>
   </gazebo>
 
-  <!-- Material orugas -->
+  <!-- ============================================================
+       MATERIALES Y FRICCIÓN
+       Orugas visuales (sin contacto físico, solo apariencia)
+       Ruedas con fricción REALISTA (mu=0.8) y contacto menos rígido
+       ============================================================ -->
   <gazebo reference="track_left">
-    <mu1>0.9</mu1><mu2>0.9</mu2>
     <material>Gazebo/Black</material>
   </gazebo>
   <gazebo reference="track_right">
-    <mu1>0.9</mu1><mu2>0.9</mu2>
     <material>Gazebo/Black</material>
   </gazebo>
 
-  <!-- Fricción ruedas sobre arena -->
   <gazebo reference="wheel_left">
-    <mu1>1.5</mu1><mu2>1.5</mu2>
-    <kp>500000</kp><kd>10</kd>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+    <kp>100000</kp>
+    <kd>10</kd>
+    <fdir1>1 0 0</fdir1>
     <material>Gazebo/Black</material>
   </gazebo>
   <gazebo reference="wheel_right">
-    <mu1>1.5</mu1><mu2>1.5</mu2>
-    <kp>500000</kp><kd>10</kd>
+    <mu1>0.8</mu1>
+    <mu2>0.8</mu2>
+    <kp>100000</kp>
+    <kd>10</kd>
+    <fdir1>1 0 0</fdir1>
     <material>Gazebo/Black</material>
   </gazebo>
 
