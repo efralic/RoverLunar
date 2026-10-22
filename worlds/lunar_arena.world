@@ -1,0 +1,1084 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="lunar_arena">
+
+    <!-- ========================================================
+         FÍSICA Y CONFIGURACIÓN GLOBAL
+         ======================================================== -->
+    <gravity>0 0 -9.81</gravity>
+    <!-- Nota: la Luna tiene 1.62 m/s². Para simular luna real cambiar a -1.622 -->
+
+    <physics type="ode">
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>150</iters>
+          <precon_iters>0</precon_iters>
+          <sor>1.400000</sor>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000</contact_max_correcting_vel>
+          <contact_surface_layer>0.01</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <!-- ========================================================
+         ESCENA — ambient subido para visibilidad, fondo casi negro
+         (estilo crepúsculo lunar: visible pero atmosférico)
+         ======================================================== -->
+    <scene>
+      <ambient>0.35 0.35 0.38 1</ambient>
+      <background>0.02 0.02 0.04 1</background>
+      <shadows>true</shadows>
+      <grid>false</grid>
+      <origin_visual>false</origin_visual>
+    </scene>
+
+    <!-- ========================================================
+         ILUMINACIÓN PRINCIPAL — sol direccional fuerte
+         Inspirada en moon.sdf pero con dirección más cenital
+         para que toda la escena quede bien iluminada.
+         ======================================================== -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 100 0 0 0</pose>
+      <diffuse>1.0 0.98 0.92 1</diffuse>
+      <specular>0.4 0.4 0.4 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>0.3 -0.4 -0.85</direction>
+    </light>
+
+    <!-- LUZ DE RELLENO — direccional secundaria desde el lado opuesto
+         Reduce sombras totalmente negras, mejora visibilidad. -->
+    <light name="fill_light" type="directional">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 50 0 0 0</pose>
+      <diffuse>0.4 0.42 0.5 1</diffuse>
+      <specular>0.05 0.05 0.05 1</specular>
+      <attenuation>
+        <range>500</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.4 0.3 -0.7</direction>
+    </light>
+
+    <!-- LUZ AMBIENTE PUNTUAL — brillo extra sobre la arena -->
+    <light name="ambient_glow" type="point">
+      <cast_shadows>false</cast_shadows>
+      <pose>5 5 8 0 0 0</pose>
+      <diffuse>0.25 0.25 0.28 1</diffuse>
+      <specular>0 0 0 1</specular>
+      <attenuation>
+        <range>30</range>
+        <constant>0.5</constant>
+        <linear>0.02</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- ========================================================
+         SUPERFICIE LUNAR — Plano 10x10 con regolito visible
+         Color gris medio mate, especular bajo (sin brillo).
+         ======================================================== -->
+    <model name="lunar_ground">
+      <static>true</static>
+      <pose>5 5 -0.05 0 0 0</pose>
+      <link name="ground_link">
+        <collision name="ground_collision">
+          <geometry>
+            <box><size>10 10 0.1</size></box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.9</mu>
+                <mu2>0.7</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="ground_visual">
+          <geometry>
+            <box><size>10 10 0.1</size></box>
+          </geometry>
+          <material>
+            <!-- Regolito lunar: gris medio mate (más claro para visibilidad) -->
+            <ambient>0.35 0.34 0.32 1</ambient>
+            <diffuse>0.62 0.58 0.54 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+            <emissive>0 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         PAREDES INVISIBLES — limitan el área de juego a 10x10
+         ======================================================== -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>5 10.05 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>10 0.1 1</size></box></geometry></collision></link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>5 -0.05 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>10 0.1 1</size></box></geometry></collision></link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>10.05 5 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.1 10 1</size></box></geometry></collision></link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-0.05 5 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.1 10 1</size></box></geometry></collision></link>
+    </model>
+
+    <!-- ========================================================
+         ZONA INICIO — marcador visual en el suelo
+         ======================================================== -->
+    <model name="start_marker">
+      <static>true</static>
+      <pose>1 5 0.001 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box><size>0.6 0.6 0.002</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0.6 0 1</ambient>
+            <diffuse>0 0.8 0 1</diffuse>
+            <emissive>0 0.2 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="start_label">
+      <static>true</static>
+      <pose>1 3.6 0.3 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box><size>0.5 0.08 0.25</size></box>
+          </geometry>
+          <material>
+            <ambient>0 0.7 0 1</ambient>
+            <diffuse>0 0.9 0 1</diffuse>
+            <emissive>0 0.2 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         CONTENEDOR DE MUESTRAS — 40cm x 60cm x 20cm
+         ======================================================== -->
+    <model name="sample_container">
+      <static>true</static>
+      <pose>1 4.2 0 0 0 0</pose>
+      <link name="base">
+        <collision name="floor_c"><geometry><box><size>0.6 0.4 0.02</size></box></geometry></collision>
+        <visual name="floor_v">
+          <pose>0 0 0.01 0 0 0</pose>
+          <geometry><box><size>0.6 0.4 0.02</size></box></geometry>
+          <material>
+            <ambient>0.1 0.1 0.8 1</ambient>
+            <diffuse>0.1 0.1 0.9 1</diffuse>
+            <emissive>0 0 0.15 1</emissive>
+          </material>
+        </visual>
+      </link>
+      <link name="wall_front">
+        <pose>0.29 0 0.11 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.02 0.4 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.02 0.4 0.2</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 0.7</ambient><emissive>0 0 0.1 1</emissive></material></visual>
+      </link>
+      <link name="wall_back">
+        <pose>-0.29 0 0.11 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.02 0.4 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.02 0.4 0.2</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 0.7</ambient><emissive>0 0 0.1 1</emissive></material></visual>
+      </link>
+      <link name="wall_left">
+        <pose>0 0.19 0.11 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.6 0.02 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.6 0.02 0.2</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 0.7</ambient><emissive>0 0 0.1 1</emissive></material></visual>
+      </link>
+      <link name="wall_right">
+        <pose>0 -0.19 0.11 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.6 0.02 0.2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.6 0.02 0.2</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 0.7</ambient><emissive>0 0 0.1 1</emissive></material></visual>
+      </link>
+      <joint name="j1" type="fixed"><parent>base</parent><child>wall_front</child></joint>
+      <joint name="j2" type="fixed"><parent>base</parent><child>wall_back</child></joint>
+      <joint name="j3" type="fixed"><parent>base</parent><child>wall_left</child></joint>
+      <joint name="j4" type="fixed"><parent>base</parent><child>wall_right</child></joint>
+    </model>
+
+    <!-- ========================================================
+         LETRERO FIN — al otro extremo del campo (x=9, y=5)
+         ======================================================== -->
+    <model name="fin_sign_pole">
+      <static>true</static>
+      <pose>9 5 0 0 0 0</pose>
+      <link name="pole">
+        <collision name="c"><geometry><cylinder><radius>0.02</radius><length>0.8</length></cylinder></geometry></collision>
+        <visual name="v">
+          <pose>0 0 0.4 0 0 0</pose>
+          <geometry><cylinder><radius>0.02</radius><length>0.8</length></cylinder></geometry>
+          <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign_board">
+        <pose>0 0 0.75 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.4 0.05 0.2</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.4 0.05 0.2</size></box></geometry>
+          <material>
+            <ambient>0.9 0.1 0.1 1</ambient>
+            <diffuse>1.0 0.0 0.0 1</diffuse>
+            <emissive>0.2 0 0 1</emissive>
+          </material>
+        </visual>
+      </link>
+      <joint name="j" type="fixed"><parent>pole</parent><child>sign_board</child></joint>
+    </model>
+
+    <!-- ========================================================
+         ACCIDENTES GEOGRÁFICOS — Valles y Surcos
+         (sin pendientes/rampas, reemplazadas por montañas abajo)
+         ======================================================== -->
+
+    <!-- VALLE 1 — zona central izquierda -->
+    <model name="valley_1">
+      <static>true</static>
+      <pose>4 3 -0.06 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.5 0.8 0.12</size></box></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.6</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>1.5 0.8 0.12</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.19 1</ambient>
+            <diffuse>0.42 0.39 0.36 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- VALLE 2 — zona central -->
+    <model name="valley_2">
+      <static>true</static>
+      <pose>5 6.5 -0.06 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.2 1.0 0.12</size></box></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.6</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>1.2 1.0 0.12</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.19 1</ambient>
+            <diffuse>0.42 0.39 0.36 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- VALLE 3 — zona derecha -->
+    <model name="valley_3">
+      <static>true</static>
+      <pose>7 3.5 -0.06 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.0 0.8 0.12</size></box></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.6</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>1.0 0.8 0.12</size></box></geometry>
+          <material>
+            <ambient>0.22 0.21 0.19 1</ambient>
+            <diffuse>0.42 0.39 0.36 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- SURCO 1 — diagonal zona norte -->
+    <model name="groove_1">
+      <static>true</static>
+      <pose>3 7 -0.04 0 0 0.3</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>2.0 0.15 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.7</mu><mu2>0.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>2.0 0.15 0.08</size></box></geometry>
+          <material>
+            <ambient>0.18 0.17 0.15 1</ambient>
+            <diffuse>0.36 0.33 0.30 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- SURCO 2 — horizontal centro -->
+    <model name="groove_2">
+      <static>true</static>
+      <pose>5.5 5 -0.04 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.8 0.12 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.7</mu><mu2>0.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>1.8 0.12 0.08</size></box></geometry>
+          <material>
+            <ambient>0.18 0.17 0.15 1</ambient>
+            <diffuse>0.36 0.33 0.30 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- SURCO 3 — zona sureste -->
+    <model name="groove_3">
+      <static>true</static>
+      <pose>7.5 7 -0.04 0 0 0.5</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.5 0.12 0.08</size></box></geometry>
+          <surface><friction><ode><mu>0.7</mu><mu2>0.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>1.5 0.12 0.08</size></box></geometry>
+          <material>
+            <ambient>0.18 0.17 0.15 1</ambient>
+            <diffuse>0.36 0.33 0.30 1</diffuse>
+            <specular>0.03 0.03 0.03 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         MONTAÑAS LUNARES — 6 montañas escalonadas
+         Cada montaña = 4 capas de cajas rotadas decrecientes
+         que forman una silueta irregular tipo cono/pirámide rocosa.
+         Reemplazan a las antiguas slope_1 y slope_2.
+         ======================================================== -->
+
+    <!-- MONTAÑA 1 — GRANDE (~0.55m de alto) en (2.5, 1.8) -->
+    <model name="mountain_1">
+      <static>true</static>
+      <pose>2.5 1.8 0 0 0 0.4</pose>
+      <link name="link">
+        <!-- Base -->
+        <collision name="layer1_c"><pose>0 0 0.12 0.08 0.05 0</pose>
+          <geometry><box><size>1.00 0.85 0.25</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.12 0.08 0.05 0</pose>
+          <geometry><box><size>1.00 0.85 0.25</size></box></geometry>
+          <material><ambient>0.28 0.26 0.23 1</ambient><diffuse>0.52 0.48 0.43 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <!-- Medio -->
+        <collision name="layer2_c"><pose>0.06 -0.04 0.32 -0.05 0.10 0.5</pose>
+          <geometry><box><size>0.70 0.55 0.22</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>0.06 -0.04 0.32 -0.05 0.10 0.5</pose>
+          <geometry><box><size>0.70 0.55 0.22</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <!-- Alto -->
+        <collision name="layer3_c"><pose>-0.03 0.05 0.47 0.06 -0.08 0.9</pose>
+          <geometry><box><size>0.45 0.38 0.18</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>-0.03 0.05 0.47 0.06 -0.08 0.9</pose>
+          <geometry><box><size>0.45 0.38 0.18</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <!-- Pico -->
+        <collision name="layer4_c"><pose>0.04 0.02 0.59 0.03 0.05 1.3</pose>
+          <geometry><box><size>0.22 0.18 0.14</size></box></geometry></collision>
+        <visual name="layer4_v"><pose>0.04 0.02 0.59 0.03 0.05 1.3</pose>
+          <geometry><box><size>0.22 0.18 0.14</size></box></geometry>
+          <material><ambient>0.34 0.32 0.29 1</ambient><diffuse>0.62 0.58 0.52 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- MONTAÑA 2 — GRANDE (~0.50m de alto) en (7.2, 8.0) -->
+    <model name="mountain_2">
+      <static>true</static>
+      <pose>7.2 8.0 0 0 0 1.7</pose>
+      <link name="link">
+        <collision name="layer1_c"><pose>0 0 0.11 0.06 -0.08 0</pose>
+          <geometry><box><size>0.95 0.80 0.22</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.11 0.06 -0.08 0</pose>
+          <geometry><box><size>0.95 0.80 0.22</size></box></geometry>
+          <material><ambient>0.27 0.25 0.22 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer2_c"><pose>-0.05 0.03 0.28 0.10 0.06 0.6</pose>
+          <geometry><box><size>0.65 0.52 0.20</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>-0.05 0.03 0.28 0.10 0.06 0.6</pose>
+          <geometry><box><size>0.65 0.52 0.20</size></box></geometry>
+          <material><ambient>0.29 0.27 0.24 1</ambient><diffuse>0.54 0.50 0.45 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer3_c"><pose>0.04 -0.04 0.42 -0.05 0.10 1.1</pose>
+          <geometry><box><size>0.40 0.35 0.16</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>0.04 -0.04 0.42 -0.05 0.10 1.1</pose>
+          <geometry><box><size>0.40 0.35 0.16</size></box></geometry>
+          <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.57 0.53 0.48 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer4_c"><pose>-0.02 0.03 0.54 0.04 -0.03 1.6</pose>
+          <geometry><box><size>0.20 0.16 0.12</size></box></geometry></collision>
+        <visual name="layer4_v"><pose>-0.02 0.03 0.54 0.04 -0.03 1.6</pose>
+          <geometry><box><size>0.20 0.16 0.12</size></box></geometry>
+          <material><ambient>0.33 0.31 0.28 1</ambient><diffuse>0.60 0.56 0.51 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- MONTAÑA 3 — MEDIANA (~0.42m de alto) NW (1.5, 8.5) -->
+    <model name="mountain_3">
+      <static>true</static>
+      <pose>1.5 8.5 0 0 0 2.3</pose>
+      <link name="link">
+        <collision name="layer1_c"><pose>0 0 0.10 0.05 0.08 0</pose>
+          <geometry><box><size>0.80 0.70 0.20</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.10 0.05 0.08 0</pose>
+          <geometry><box><size>0.80 0.70 0.20</size></box></geometry>
+          <material><ambient>0.28 0.26 0.23 1</ambient><diffuse>0.52 0.48 0.43 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer2_c"><pose>0.04 -0.03 0.24 -0.07 0.05 0.7</pose>
+          <geometry><box><size>0.55 0.45 0.18</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>0.04 -0.03 0.24 -0.07 0.05 0.7</pose>
+          <geometry><box><size>0.55 0.45 0.18</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer3_c"><pose>-0.03 0.04 0.36 0.06 -0.05 1.3</pose>
+          <geometry><box><size>0.30 0.26 0.14</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>-0.03 0.04 0.36 0.06 -0.05 1.3</pose>
+          <geometry><box><size>0.30 0.26 0.14</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer4_c"><pose>0.02 0.02 0.45 0 0.04 1.8</pose>
+          <geometry><box><size>0.16 0.13 0.10</size></box></geometry></collision>
+        <visual name="layer4_v"><pose>0.02 0.02 0.45 0 0.04 1.8</pose>
+          <geometry><box><size>0.16 0.13 0.10</size></box></geometry>
+          <material><ambient>0.34 0.32 0.29 1</ambient><diffuse>0.62 0.58 0.52 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- MONTAÑA 4 — MEDIANA (~0.45m de alto) SE (8.5, 1.5) -->
+    <model name="mountain_4">
+      <static>true</static>
+      <pose>8.5 1.5 0 0 0 3.0</pose>
+      <link name="link">
+        <collision name="layer1_c"><pose>0 0 0.11 -0.06 0.05 0</pose>
+          <geometry><box><size>0.85 0.72 0.22</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.11 -0.06 0.05 0</pose>
+          <geometry><box><size>0.85 0.72 0.22</size></box></geometry>
+          <material><ambient>0.27 0.25 0.22 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer2_c"><pose>-0.04 0.03 0.26 0.08 -0.06 0.5</pose>
+          <geometry><box><size>0.58 0.48 0.18</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>-0.04 0.03 0.26 0.08 -0.06 0.5</pose>
+          <geometry><box><size>0.58 0.48 0.18</size></box></geometry>
+          <material><ambient>0.29 0.27 0.24 1</ambient><diffuse>0.54 0.50 0.45 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer3_c"><pose>0.03 -0.04 0.38 -0.04 0.08 1.0</pose>
+          <geometry><box><size>0.32 0.28 0.14</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>0.03 -0.04 0.38 -0.04 0.08 1.0</pose>
+          <geometry><box><size>0.32 0.28 0.14</size></box></geometry>
+          <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.57 0.53 0.48 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer4_c"><pose>0 0.02 0.48 0.03 0 1.5</pose>
+          <geometry><box><size>0.18 0.14 0.10</size></box></geometry></collision>
+        <visual name="layer4_v"><pose>0 0.02 0.48 0.03 0 1.5</pose>
+          <geometry><box><size>0.18 0.14 0.10</size></box></geometry>
+          <material><ambient>0.33 0.31 0.28 1</ambient><diffuse>0.60 0.56 0.51 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- MONTAÑA 5 — PEQUEÑA (~0.32m de alto) sur (5.5, 0.8) -->
+    <model name="mountain_5">
+      <static>true</static>
+      <pose>5.5 0.8 0 0 0 0.9</pose>
+      <link name="link">
+        <collision name="layer1_c"><pose>0 0 0.08 0.05 -0.04 0</pose>
+          <geometry><box><size>0.65 0.55 0.16</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.08 0.05 -0.04 0</pose>
+          <geometry><box><size>0.65 0.55 0.16</size></box></geometry>
+          <material><ambient>0.28 0.26 0.23 1</ambient><diffuse>0.52 0.48 0.43 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer2_c"><pose>-0.03 0.04 0.19 -0.06 0.05 0.6</pose>
+          <geometry><box><size>0.42 0.35 0.14</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>-0.03 0.04 0.19 -0.06 0.05 0.6</pose>
+          <geometry><box><size>0.42 0.35 0.14</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer3_c"><pose>0.02 -0.02 0.28 0.04 -0.03 1.2</pose>
+          <geometry><box><size>0.20 0.17 0.10</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>0.02 -0.02 0.28 0.04 -0.03 1.2</pose>
+          <geometry><box><size>0.20 0.17 0.10</size></box></geometry>
+          <material><ambient>0.33 0.31 0.28 1</ambient><diffuse>0.60 0.56 0.51 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- MONTAÑA 6 — PEQUEÑA (~0.30m de alto) NE (9.0, 8.7) -->
+    <model name="mountain_6">
+      <static>true</static>
+      <pose>9.0 8.7 0 0 0 2.5</pose>
+      <link name="link">
+        <collision name="layer1_c"><pose>0 0 0.075 0.04 0.06 0</pose>
+          <geometry><box><size>0.60 0.50 0.15</size></box></geometry></collision>
+        <visual name="layer1_v"><pose>0 0 0.075 0.04 0.06 0</pose>
+          <geometry><box><size>0.60 0.50 0.15</size></box></geometry>
+          <material><ambient>0.27 0.25 0.22 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer2_c"><pose>0.04 -0.03 0.18 -0.05 -0.04 0.8</pose>
+          <geometry><box><size>0.40 0.33 0.13</size></box></geometry></collision>
+        <visual name="layer2_v"><pose>0.04 -0.03 0.18 -0.05 -0.04 0.8</pose>
+          <geometry><box><size>0.40 0.33 0.13</size></box></geometry>
+          <material><ambient>0.29 0.27 0.24 1</ambient><diffuse>0.54 0.50 0.45 1</diffuse><specular>0.03 0.03 0.03 1</specular></material></visual>
+        <collision name="layer3_c"><pose>-0.02 0.02 0.26 0.05 0.04 1.4</pose>
+          <geometry><box><size>0.18 0.15 0.09</size></box></geometry></collision>
+        <visual name="layer3_v"><pose>-0.02 0.02 0.26 0.05 0.04 1.4</pose>
+          <geometry><box><size>0.18 0.15 0.09</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         CRÁTERES LUNARES — 6 cráteres transitables
+         Diseño: discos finos pegados al suelo (no son hoyos reales)
+           - Disco externo claro = "rim ejecta" del impacto
+           - Disco interior oscuro = sombra del cráter
+           - Pequeñas rocas eyecta alrededor para romper simetría
+         Altura máxima ~5mm → el rover pasa por encima sin problema.
+         ======================================================== -->
+
+    <!-- CRÁTER 1 — GRANDE (R=0.55m) en (2.5, 3.5) -->
+    <model name="crater_1">
+      <static>true</static>
+      <pose>2.5 3.5 0 0 0 0</pose>
+      <link name="link">
+        <!-- Rim ejecta (anillo exterior claro) -->
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.55</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.42 0.40 0.37 1</ambient>
+            <diffuse>0.74 0.70 0.64 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <!-- Floor (interior oscuro = sombra del cráter) -->
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.38</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.08 0.07 0.06 1</ambient>
+            <diffuse>0.18 0.16 0.14 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <!-- Rocas eyecta asimétricas (rompen simetría) -->
+        <collision name="ej1_c"><pose>0.58 0.10 0.015 0.2 0.1 0.4</pose>
+          <geometry><box><size>0.06 0.05 0.03</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>0.58 0.10 0.015 0.2 0.1 0.4</pose>
+          <geometry><box><size>0.06 0.05 0.03</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+        <collision name="ej2_c"><pose>-0.30 0.52 0.012 -0.1 0.3 1.1</pose>
+          <geometry><box><size>0.05 0.04 0.025</size></box></geometry></collision>
+        <visual name="ej2_v"><pose>-0.30 0.52 0.012 -0.1 0.3 1.1</pose>
+          <geometry><box><size>0.05 0.04 0.025</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse></material></visual>
+        <collision name="ej3_c"><pose>-0.55 -0.18 0.010 0.4 -0.2 2.0</pose>
+          <geometry><box><size>0.045 0.035 0.020</size></box></geometry></collision>
+        <visual name="ej3_v"><pose>-0.55 -0.18 0.010 0.4 -0.2 2.0</pose>
+          <geometry><box><size>0.045 0.035 0.020</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- CRÁTER 2 — MEDIANA (R=0.45m) en (3.5, 6.5) -->
+    <model name="crater_2">
+      <static>true</static>
+      <pose>3.5 6.5 0 0 0 0.6</pose>
+      <link name="link">
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.45</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.40 0.38 0.35 1</ambient>
+            <diffuse>0.72 0.68 0.62 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.31</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.09 0.08 0.07 1</ambient>
+            <diffuse>0.20 0.18 0.16 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <collision name="ej1_c"><pose>0.45 0.15 0.012 0.1 0.2 0.7</pose>
+          <geometry><box><size>0.05 0.04 0.025</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>0.45 0.15 0.012 0.1 0.2 0.7</pose>
+          <geometry><box><size>0.05 0.04 0.025</size></box></geometry>
+          <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse></material></visual>
+        <collision name="ej2_c"><pose>-0.20 0.42 0.010 -0.2 0.1 1.4</pose>
+          <geometry><box><size>0.04 0.032 0.020</size></box></geometry></collision>
+        <visual name="ej2_v"><pose>-0.20 0.42 0.010 -0.2 0.1 1.4</pose>
+          <geometry><box><size>0.04 0.032 0.020</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- CRÁTER 3 — PEQUEÑA (R=0.30m) en (5.0, 4.5) -->
+    <model name="crater_3">
+      <static>true</static>
+      <pose>5.0 4.5 0 0 0 1.2</pose>
+      <link name="link">
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.30</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.41 0.39 0.36 1</ambient>
+            <diffuse>0.73 0.69 0.63 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.20</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.08 0.07 0.06 1</ambient>
+            <diffuse>0.19 0.17 0.15 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <collision name="ej1_c"><pose>0.32 -0.05 0.010 0.3 0.0 0.3</pose>
+          <geometry><box><size>0.04 0.030 0.020</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>0.32 -0.05 0.010 0.3 0.0 0.3</pose>
+          <geometry><box><size>0.04 0.030 0.020</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- CRÁTER 4 — PEQUEÑA (R=0.30m) en (6.5, 5.5) -->
+    <model name="crater_4">
+      <static>true</static>
+      <pose>6.5 5.5 0 0 0 2.0</pose>
+      <link name="link">
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.30</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.40 0.38 0.35 1</ambient>
+            <diffuse>0.72 0.68 0.62 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.20</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.09 0.08 0.07 1</ambient>
+            <diffuse>0.21 0.19 0.17 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <collision name="ej1_c"><pose>-0.31 0.08 0.010 0.0 0.3 1.5</pose>
+          <geometry><box><size>0.045 0.035 0.022</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>-0.31 0.08 0.010 0.0 0.3 1.5</pose>
+          <geometry><box><size>0.045 0.035 0.022</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- CRÁTER 5 — MEDIANA (R=0.40m) en (8.0, 6.5) -->
+    <model name="crater_5">
+      <static>true</static>
+      <pose>8.0 6.5 0 0 0 0.3</pose>
+      <link name="link">
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.40</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.42 0.40 0.37 1</ambient>
+            <diffuse>0.74 0.70 0.64 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.28</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.08 0.07 0.06 1</ambient>
+            <diffuse>0.19 0.17 0.15 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <collision name="ej1_c"><pose>0.42 -0.10 0.011 0.2 0.0 0.6</pose>
+          <geometry><box><size>0.050 0.038 0.022</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>0.42 -0.10 0.011 0.2 0.0 0.6</pose>
+          <geometry><box><size>0.050 0.038 0.022</size></box></geometry>
+          <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse></material></visual>
+        <collision name="ej2_c"><pose>-0.15 0.40 0.010 -0.1 0.2 1.8</pose>
+          <geometry><box><size>0.040 0.032 0.020</size></box></geometry></collision>
+        <visual name="ej2_v"><pose>-0.15 0.40 0.010 -0.1 0.2 1.8</pose>
+          <geometry><box><size>0.040 0.032 0.020</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- CRÁTER 6 — GRANDE (R=0.50m) en (5.5, 8.0) -->
+    <model name="crater_6">
+      <static>true</static>
+      <pose>5.5 8.0 0 0 0 1.8</pose>
+      <link name="link">
+        <visual name="rim_v">
+          <pose>0 0 0.001 0 0 0</pose>
+          <geometry><cylinder><radius>0.50</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.41 0.39 0.36 1</ambient>
+            <diffuse>0.73 0.69 0.63 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+        <visual name="floor_v">
+          <pose>0 0 0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.34</radius><length>0.002</length></cylinder></geometry>
+          <material>
+            <ambient>0.08 0.07 0.06 1</ambient>
+            <diffuse>0.18 0.16 0.14 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+        <collision name="ej1_c"><pose>0.52 0.12 0.013 0.1 0.2 0.5</pose>
+          <geometry><box><size>0.055 0.042 0.026</size></box></geometry></collision>
+        <visual name="ej1_v"><pose>0.52 0.12 0.013 0.1 0.2 0.5</pose>
+          <geometry><box><size>0.055 0.042 0.026</size></box></geometry>
+          <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse></material></visual>
+        <collision name="ej2_c"><pose>-0.30 0.45 0.011 -0.2 0.1 1.3</pose>
+          <geometry><box><size>0.048 0.038 0.022</size></box></geometry></collision>
+        <visual name="ej2_v"><pose>-0.30 0.45 0.011 -0.2 0.1 1.3</pose>
+          <geometry><box><size>0.048 0.038 0.022</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse></material></visual>
+        <collision name="ej3_c"><pose>-0.48 -0.20 0.010 0.3 -0.1 2.1</pose>
+          <geometry><box><size>0.042 0.035 0.020</size></box></geometry></collision>
+        <visual name="ej3_v"><pose>-0.48 -0.20 0.010 0.3 -0.1 2.1</pose>
+          <geometry><box><size>0.042 0.035 0.020</size></box></geometry>
+          <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         ROCAS DE COLORES — 10 rocas distribuidas en la arena
+         Colores: ROJO (r), AZUL (b), VERDE (g)
+         ======================================================== -->
+
+    <!-- ROCA 1 — ROJA grande -->
+    <model name="rock_1_red">
+      <static>false</static>
+      <pose>3.5 4.0 0.015 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.035</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.3 0 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 2 — AZUL mediana -->
+    <model name="rock_2_blue">
+      <static>false</static>
+      <pose>4.5 7.0 0.013 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.030</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <material><ambient>0.1 0.1 0.9 1</ambient><diffuse>0 0 1 1</diffuse><emissive>0 0 0.3 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 3 — VERDE pequeña -->
+    <model name="rock_3_green">
+      <static>false</static>
+      <pose>6.0 4.5 0.012 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.025</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.012</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.012</radius></sphere></geometry>
+          <material><ambient>0.1 0.8 0.1 1</ambient><diffuse>0 1 0 1</diffuse><emissive>0 0.3 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 4 — ROJA pequeña -->
+    <model name="rock_4_red">
+      <static>false</static>
+      <pose>7.0 6.0 0.010 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.020</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.010</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.010</radius></sphere></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.3 0 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 5 — AZUL grande -->
+    <model name="rock_5_blue">
+      <static>false</static>
+      <pose>5.5 2.5 0.015 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.040</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <material><ambient>0.1 0.1 0.9 1</ambient><diffuse>0 0 1 1</diffuse><emissive>0 0 0.3 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 6 — VERDE mediana -->
+    <model name="rock_6_green">
+      <static>false</static>
+      <pose>8.0 4.0 0.013 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.030</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <material><ambient>0.1 0.8 0.1 1</ambient><diffuse>0 1 0 1</diffuse><emissive>0 0.3 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 7 — ROJA mediana -->
+    <model name="rock_7_red">
+      <static>false</static>
+      <pose>2.5 7.5 0.012 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.025</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.012</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.012</radius></sphere></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.3 0 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 8 — AZUL pequeña -->
+    <model name="rock_8_blue">
+      <static>false</static>
+      <pose>6.5 8.5 0.010 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.020</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.010</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.010</radius></sphere></geometry>
+          <material><ambient>0.1 0.1 0.9 1</ambient><diffuse>0 0 1 1</diffuse><emissive>0 0 0.3 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 9 — VERDE grande -->
+    <model name="rock_9_green">
+      <static>false</static>
+      <pose>4.0 2.0 0.015 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.045</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.015</radius></sphere></geometry>
+          <material><ambient>0.1 0.8 0.1 1</ambient><diffuse>0 1 0 1</diffuse><emissive>0 0.3 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ROCA 10 — ROJA mediana -->
+    <model name="rock_10_red">
+      <static>false</static>
+      <pose>8.5 7.5 0.013 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.030</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
+        <collision name="c"><geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v">
+          <geometry><sphere><radius>0.013</radius></sphere></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1 0 0 1</diffuse><emissive>0.3 0 0 1</emissive></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         OBSTÁCULOS — ROCAS LUNARES IRREGULARES
+         ======================================================== -->
+
+    <!-- ROCA LUNAR GRANDE 1 — centro -->
+    <model name="rock_obstacle_1">
+      <static>true</static>
+      <pose>4 5 0 0 0 0.7</pose>
+      <link name="link">
+        <collision name="body_c"><pose>0 0 0.07 0.2 0.3 0</pose>
+          <geometry><box><size>0.18 0.14 0.13</size></box></geometry></collision>
+        <visual name="body_v"><pose>0 0 0.07 0.2 0.3 0</pose>
+          <geometry><box><size>0.18 0.14 0.13</size></box></geometry>
+          <material><ambient>0.28 0.26 0.23 1</ambient><diffuse>0.52 0.48 0.43 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+        <collision name="bump_c"><pose>0.06 -0.04 0.10 0.5 0.1 0.8</pose>
+          <geometry><box><size>0.10 0.08 0.07</size></box></geometry></collision>
+        <visual name="bump_v"><pose>0.06 -0.04 0.10 0.5 0.1 0.8</pose>
+          <geometry><box><size>0.10 0.08 0.07</size></box></geometry>
+          <material><ambient>0.26 0.24 0.21 1</ambient><diffuse>0.48 0.44 0.40 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+        <collision name="back_c"><pose>-0.07 0.03 0.05 -0.2 0.4 -0.5</pose>
+          <geometry><box><size>0.08 0.07 0.06</size></box></geometry></collision>
+        <visual name="back_v"><pose>-0.07 0.03 0.05 -0.2 0.4 -0.5</pose>
+          <geometry><box><size>0.08 0.07 0.06</size></box></geometry>
+          <material><ambient>0.27 0.25 0.22 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- ROCA LUNAR MEDIANA 2 — sur -->
+    <model name="rock_obstacle_2">
+      <static>true</static>
+      <pose>6.5 3 0 0 0 1.3</pose>
+      <link name="link">
+        <collision name="body_c"><pose>0 0 0.05 0.15 0.4 0</pose>
+          <geometry><box><size>0.14 0.11 0.10</size></box></geometry></collision>
+        <visual name="body_v"><pose>0 0 0.05 0.15 0.4 0</pose>
+          <geometry><box><size>0.14 0.11 0.10</size></box></geometry>
+          <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.54 0.50 0.45 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+        <collision name="bump_c"><pose>-0.04 0.03 0.08 0.3 0.0 0.6</pose>
+          <geometry><box><size>0.08 0.06 0.05</size></box></geometry></collision>
+        <visual name="bump_v"><pose>-0.04 0.03 0.08 0.3 0.0 0.6</pose>
+          <geometry><box><size>0.08 0.06 0.05</size></box></geometry>
+          <material><ambient>0.28 0.26 0.23 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- ROCA LUNAR MEDIANA 3 — noreste -->
+    <model name="rock_obstacle_3">
+      <static>true</static>
+      <pose>7 7 0 0 0 2.1</pose>
+      <link name="link">
+        <collision name="body_c"><pose>0 0 0.06 0.25 0.2 0</pose>
+          <geometry><box><size>0.16 0.12 0.11</size></box></geometry></collision>
+        <visual name="body_v"><pose>0 0 0.06 0.25 0.2 0</pose>
+          <geometry><box><size>0.16 0.12 0.11</size></box></geometry>
+          <material><ambient>0.27 0.25 0.22 1</ambient><diffuse>0.50 0.46 0.41 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+        <collision name="bump_c"><pose>0.05 0.02 0.09 -0.3 0.5 0.4</pose>
+          <geometry><box><size>0.09 0.07 0.06</size></box></geometry></collision>
+        <visual name="bump_v"><pose>0.05 0.02 0.09 -0.3 0.5 0.4</pose>
+          <geometry><box><size>0.09 0.07 0.06</size></box></geometry>
+          <material><ambient>0.29 0.27 0.24 1</ambient><diffuse>0.54 0.50 0.45 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+        <collision name="side_c"><pose>-0.06 -0.03 0.04 0.4 -0.2 -0.7</pose>
+          <geometry><box><size>0.07 0.06 0.05</size></box></geometry></collision>
+        <visual name="side_v"><pose>-0.06 -0.03 0.04 0.4 -0.2 -0.7</pose>
+          <geometry><box><size>0.07 0.06 0.05</size></box></geometry>
+          <material><ambient>0.26 0.24 0.21 1</ambient><diffuse>0.48 0.44 0.40 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual>
+      </link>
+    </model>
+
+    <!-- ========================================================
+         GUIJARROS DECORATIVOS — pequeñas piedras dispersas
+         (visualmente claros para que se vean sobre el suelo)
+         ======================================================== -->
+
+    <model name="pebble_1"><static>true</static><pose>2.0 2.0 0.015 0.3 0.2 0.5</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.05 0.04 0.030</size></box></geometry>
+        <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_2"><static>true</static><pose>2.3 6.2 0.012 0.1 0.4 1.2</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.045 0.035 0.025</size></box></geometry>
+        <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_3"><static>true</static><pose>3.2 8.5 0.014 0.5 0.1 0.3</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.055 0.040 0.028</size></box></geometry>
+        <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_4"><static>true</static><pose>5.0 3.8 0.011 0.2 0.3 1.5</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.040 0.032 0.024</size></box></geometry>
+        <material><ambient>0.34 0.32 0.29 1</ambient><diffuse>0.62 0.58 0.52 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_5"><static>true</static><pose>5.8 1.5 0.013 0.4 0.0 0.8</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.050 0.042 0.026</size></box></geometry>
+        <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_6"><static>true</static><pose>6.8 5.2 0.010 0.1 0.5 2.0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.035 0.040 0.022</size></box></geometry>
+        <material><ambient>0.33 0.31 0.28 1</ambient><diffuse>0.60 0.56 0.50 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_7"><static>true</static><pose>8.2 2.5 0.014 0.3 0.4 0.2</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.048 0.036 0.028</size></box></geometry>
+        <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_8"><static>true</static><pose>8.5 5.8 0.012 0.5 0.2 1.0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.042 0.034 0.025</size></box></geometry>
+        <material><ambient>0.32 0.30 0.27 1</ambient><diffuse>0.58 0.54 0.49 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_9"><static>true</static><pose>9.2 1.0 0.013 0.0 0.3 1.7</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.052 0.040 0.025</size></box></geometry>
+        <material><ambient>0.30 0.28 0.25 1</ambient><diffuse>0.55 0.51 0.46 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_10"><static>true</static><pose>5.5 9.0 0.011 0.4 0.1 0.6</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.038 0.032 0.022</size></box></geometry>
+        <material><ambient>0.34 0.32 0.29 1</ambient><diffuse>0.62 0.58 0.52 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_11"><static>true</static><pose>1.8 4.0 0.012 0.2 0.4 1.4</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.045 0.032 0.025</size></box></geometry>
+        <material><ambient>0.31 0.29 0.26 1</ambient><diffuse>0.56 0.52 0.47 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <model name="pebble_12"><static>true</static><pose>6.0 6.0 0.010 0.5 0.0 0.9</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.036 0.030 0.022</size></box></geometry>
+        <material><ambient>0.33 0.31 0.28 1</ambient><diffuse>0.60 0.56 0.50 1</diffuse><specular>0.04 0.04 0.04 1</specular></material></visual></link></model>
+
+    <!-- ========================================================
+         PLUGIN ROS — Gazebo ROS State y Factory
+         ======================================================== -->
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+    </plugin>
+
+    <plugin name="gazebo_ros_factory" filename="libgazebo_ros_factory.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+    </plugin>
+
+  </world>
+</sdf>
